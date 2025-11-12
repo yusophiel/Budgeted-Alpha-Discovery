@@ -9,66 +9,49 @@ from dataclasses import dataclass
 import json
 from datetime import datetime
 from scipy import stats
-
 import lightgbm as lgb
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import TimeSeriesSplit
-
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 warnings.filterwarnings('ignore')
 
-os.makedirs('./kaggle_outputs/rl_integration', exist_ok=True)
-sns.set_style("whitegrid")
-plt.rcParams['figure.facecolor'] = 'white'
 
-
-# ============================================================
-# 改进的特征工程
-# ============================================================
-
+# Improved Feature Engineering
 class ImprovedFeatureEngineer:
-    """改进的特征工程 - 处理缺失值，创建多时间尺度特征"""
 
     @staticmethod
     def engineer_features(df: pd.DataFrame, lookback_periods: List[int] = None) -> pd.DataFrame:
-        """
-        创建高质量的多时间尺度特征
-
-        Args:
-            df: 原始特征数据框
-            lookback_periods: 回看周期列表
-        """
         if lookback_periods is None:
             lookback_periods = [5, 10, 20, 60]
 
         features = df.copy()
 
-        # 1. 处理缺失值 - 按列填充0
+        # Handle missing values - fill by column
         for col in features.columns:
             if features[col].isna().sum() > 0:
-                # 用列均值填充，不存在则用0
+                # Fill with column mean, or 0 if mean does not exist
                 mean_val = features[col].mean()
                 features[col] = features[col].fillna(mean_val if not np.isnan(mean_val) else 0)
 
-        # 2. 标准化每列特征 (Z-score)
-        print("  [Feature Engineering] 标准化特征...")
+        # Standardize each feature column (Z-score)
+        print("Standardizing features...")
         scaler = StandardScaler()
         feature_cols = [col for col in features.columns if col != 'date_id']
         features[feature_cols] = scaler.fit_transform(features[feature_cols])
 
-        # 3. 创建多时间尺度特征
-        print("  [Feature Engineering] 创建多时间尺度特征...")
+        # Create multi-horizon features
+        print("Creating multi-horizon features...")
         for period in lookback_periods:
-            # 移动均值
-            for col in feature_cols[:min(10, len(feature_cols))]:  # 只对前10个特征
+            # Moving average
+            for col in feature_cols[:min(10, len(feature_cols))]:  # only for first 10 features
                 features[f'{col}_ma{period}'] = features[col].rolling(period, min_periods=1).mean()
-                # 动量特征 (当前值 - MA)
+                # Momentum feature (current value - MA)
                 features[f'{col}_momentum{period}'] = features[col] - features[f'{col}_ma{period}']
 
-        # 4. 创建交叉特征 (特征间的相关性)
-        print("  [Feature Engineering] 创建交叉特征...")
+        # Create cross features (group-wise statistics)
+        print("  [Feature Engineering] Creating cross-group features...")
         group_cols = {
             'M': [c for c in feature_cols if c.startswith('M')],
             'V': [c for c in feature_cols if c.startswith('V')],
@@ -77,22 +60,18 @@ class ImprovedFeatureEngineer:
 
         for group_name, cols in group_cols.items():
             if len(cols) > 0:
-                # 组内特征的均值
+                # Group mean
                 features[f'{group_name}_mean'] = features[cols].mean(axis=1)
-                # 组内特征的标准差
+                # Group standard deviation
                 features[f'{group_name}_std'] = features[cols].std(axis=1).fillna(0)
 
-        print(f"特征工程完成: {len(features.columns)} 列 (原始 {len(feature_cols)} 列)")
+        print(f"Feature engineering completed: {len(features.columns)} columns (original {len(feature_cols)} columns)")
 
         return features.fillna(0)
 
 
-# ============================================================
-# 改进的RL代理
-# ============================================================
-
+# Improved RL Agent
 class ImprovedReinforcementLearningAgent:
-    """改进的Q-Learning RL代理 - 真正的学习而非随机动作"""
 
     def __init__(self, learning_rate: float = 0.01, gamma: float = 0.95,
                  epsilon_start: float = 1.0, epsilon_min: float = 0.01):
@@ -104,18 +83,16 @@ class ImprovedReinforcementLearningAgent:
         self.episode_rewards = []
 
     def _get_state_key(self, state_vector: np.ndarray) -> str:
-        """离散化状态向量为字符串键"""
-        # 将连续状态离散化为5级
+        # Discretize continuous state into 5 levels
         discretized = np.clip((state_vector + 1) / 2 * 5, 0, 4).astype(int)
         return str(tuple(discretized))
 
     def _select_action(self, state_key: str, available_actions: List[str]) -> str:
-        """ε-贪心动作选择"""
         if np.random.random() < self.epsilon:
-            # 探索：随机选择
+            # Exploration: random action
             return available_actions[np.random.randint(len(available_actions))]
         else:
-            # 利用：选择最佳动作
+            # Exploitation: choose best action
             if state_key in self.q_table:
                 q_values = self.q_table[state_key]
                 best_action = max(q_values.items(), key=lambda x: x[1])[0]
@@ -125,23 +102,22 @@ class ImprovedReinforcementLearningAgent:
 
     def train_episode(self, env_step_fn: Callable, max_steps: int = 100,
                       available_actions: List[str] = None) -> float:
-        """训练一个episode"""
         if available_actions is None:
             available_actions = ['buy', 'sell', 'hold', 'rebalance']
 
         total_reward = 0.0
-        state_vector = np.random.randn(5)  # 初始状态向量
+        state_vector = np.random.randn(5)  # initial state vector
 
         for step in range(max_steps):
             state_key = self._get_state_key(state_vector)
 
-            # 动作选择
+            # Action selection
             action = self._select_action(state_key, available_actions)
 
-            # 环境步进
+            # Environment step
             reward, next_state_vector, done = env_step_fn(state_vector, action)
 
-            # Q-learning更新
+            # Q-learning update
             next_state_key = self._get_state_key(next_state_vector)
 
             if state_key not in self.q_table:
@@ -149,7 +125,7 @@ class ImprovedReinforcementLearningAgent:
             if next_state_key not in self.q_table:
                 self.q_table[next_state_key] = {a: 0.0 for a in available_actions}
 
-            # Q-value更新公式
+            # Q-value update formula
             current_q = self.q_table[state_key][action]
             max_next_q = max(self.q_table[next_state_key].values())
             new_q = current_q + self.learning_rate * (reward + self.gamma * max_next_q - current_q)
@@ -165,13 +141,9 @@ class ImprovedReinforcementLearningAgent:
         return total_reward
 
 
-# ============================================================
-# 数据准备
-# ============================================================
-
+# Data Preparation
 @dataclass
 class RLDataFrame:
-    """RL系统兼容的数据框架"""
     date_id: np.ndarray
     features: pd.DataFrame
     returns: np.ndarray
@@ -180,38 +152,35 @@ class RLDataFrame:
 
 
 class KaggleRLDataPreparator:
-    """为RL系统准备Kaggle数据"""
 
     def __init__(self, train_csv: str, lookback: int = 20):
         self.train_csv = train_csv
         self.lookback = lookback
-        # 使用on_bad_lines='skip'来处理有问题的行
+        # Use on_bad_lines='skip' to handle problematic rows
         self.df = pd.read_csv(train_csv, on_bad_lines='skip')
 
     def prepare(self) -> RLDataFrame:
-        """准备RL系统需要的数据格式"""
-
-        # 提取基本数据
+        # Extract basic series
         date_ids = self.df['date_id'].values
         returns = self.df['forward_returns'].values
         risk_free = self.df['risk_free_rate'].values
         excess_returns = self.df['market_forward_excess_returns'].values
 
-        # 获取特征
+        # Extract features
         feature_cols = [col for col in self.df.columns
                         if col not in ['date_id', 'forward_returns', 'risk_free_rate',
                                        'market_forward_excess_returns']]
         raw_features = self.df[feature_cols].fillna(0)
 
-        # 应用改进的特征工程
-        print("应用改进的特征工程...")
+        # Apply improved feature engineering
+        print("Applying improved feature engineering...")
         engineer = ImprovedFeatureEngineer()
         features = engineer.engineer_features(raw_features, lookback_periods=[5, 10, 20, 60])
 
-        print(f"Kaggle数据准备完成")
-        print(f"样本数: {len(returns)}")
-        print(f"特征数: {features.shape[1]}")
-        print(f"非零特征比例: {(features != 0).sum().sum() / (features.shape[0] * features.shape[1]) * 100:.1f}%")
+        print("Kaggle data preparation completed")
+        print(f"Number of samples: {len(returns)}")
+        print(f"Number of features: {features.shape[1]}")
+        print(f"Non-zero feature ratio: {(features != 0).sum().sum() / (features.shape[0] * features.shape[1]) * 100:.1f}%")
 
         return RLDataFrame(
             date_id=date_ids,
@@ -222,12 +191,8 @@ class KaggleRLDataPreparator:
         )
 
 
-# ============================================================
-# 改进的RL因子系统
-# ============================================================
-
+# Improved RL Factor System
 class ImprovedKaggleRLFactorSystem:
-    """改进的RL因子系统 - 真正的学习"""
 
     def __init__(self, data: RLDataFrame, train_end_idx: int):
         self.data = data
@@ -237,53 +202,52 @@ class ImprovedKaggleRLFactorSystem:
         )
 
     def extract_factors_from_kaggle(self) -> Dict[str, np.ndarray]:
-        """从Kaggle特征中提取因子"""
         factors = {}
         features = self.data.features
 
-        # ✅ 改动2: 期望的前缀列表
+        # Expected feature prefixes
         expected_prefixes = ['M', 'V', 'P', 'S', 'E', 'I']
         found_prefixes = []
 
-        # 使用工程后的特征作为因子
+        # Use engineered features as factors
         for prefix in expected_prefixes:
             cols = [c for c in features.columns if c.startswith(prefix)]
             if len(cols) > 0:
                 factor_data = features[cols].fillna(0)
-                # 使用PCA-like方法: 取主方向
+                # PCA-like approach: take the main direction via normalized average
                 factor_data_norm = (factor_data - factor_data.mean()) / (factor_data.std() + 1e-8)
                 factors[f'{prefix}_factor'] = factor_data_norm.mean(axis=1).values
                 found_prefixes.append(prefix)
             else:
-                # ✅ 缺失则用零向量补充
+                # If missing, use a zero vector as fallback
                 factors[f'{prefix}_factor'] = np.zeros(len(features))
 
-        # 添加工程特征作为额外因子
+        # Add engineered MA features as an additional factor
         ma_cols = [c for c in features.columns if 'ma' in c][:5]
         if len(ma_cols) > 0:
             factors['MA_factor'] = features[ma_cols].mean(axis=1).values
         else:
             factors['MA_factor'] = np.zeros(len(features))
 
+        # Add engineered momentum features as an additional factor
         momentum_cols = [c for c in features.columns if 'momentum' in c][:5]
         if len(momentum_cols) > 0:
             factors['Momentum_factor'] = features[momentum_cols].mean(axis=1).values
         else:
             factors['Momentum_factor'] = np.zeros(len(features))
 
-        # ✅ 改动2: 验证因子数量
+        # Validate number of factors
         assert len(factors) == 8, \
-            f"因子数不匹配 (期望8,得到{len(factors)})"
+            f"Factor count mismatch (expected 8, got {len(factors)})"
         assert len(found_prefixes) >= 4, \
-            f"基础因子不足 (期望≥4,得到{len(found_prefixes)})"
+            f"Insufficient base factors (expected ≥4, got {len(found_prefixes)})"
 
-        print(f"✓ 成功提取 {len(factors)} 个因子 "
+        print(f"Successfully extracted {len(factors)} factors "
               f"(found {len(found_prefixes)}/{len(expected_prefixes)} prefixes)")
         return factors
 
     def compute_factor_ic(self, factors: Dict[str, np.ndarray],
                           returns: np.ndarray, lookback: int = 60) -> Dict[str, float]:
-        """计算每个因子的IC (Information Coefficient)"""
         ics = {}
         for fname, factor in factors.items():
             ic_list = []
@@ -309,34 +273,31 @@ class ImprovedKaggleRLFactorSystem:
                             n_episodes: int = 200,
                             top_k: int = 10,
                             lambda_var: float = 0.1) -> Dict[str, float]:
-        """使用RL代理优化因子权重 - 真正的学习"""
-
         print(f"RL Agent Training ({n_episodes} episodes, Top-K={top_k}, λ={lambda_var})...")
 
         factor_names = list(factors.keys())
 
-        # ✅ 改动3: 添加权重快照池
+        # Pool for storing weight snapshots
         self.weight_snapshots = []
 
-        # 计算初始IC值作为启发式信息
+        # Compute initial IC values as heuristic reference
         factor_ics = self.compute_factor_ic(factors, returns[:self.train_end_idx])
 
         def env_step_fn(state: np.ndarray, action: str) -> Tuple[float, np.ndarray, bool, Dict]:
-            """RL环境步进"""
-            # 状态表示当前因子权重
+            # State represents current factor weights
             weights = {}
             for i, fname in enumerate(factor_names):
-                # 将状态向量映射到权重
+                # Map state vector to weights
                 weights[fname] = np.clip((state[i % len(state)] + 1) / 2, 0, 1)
 
-            # 标准化权重
+            # Normalize weights
             w_sum = sum(weights.values())
             if w_sum > 1e-8:
                 weights = {f: w / w_sum for f, w in weights.items()}
             else:
                 weights = {f: 1.0 / len(factor_names) for f in factor_names}
 
-            # 基于权重生成信号
+            # Generate signal based on weights
             t_idx = min(int(abs(state[0]) * len(returns)) // 10, len(returns) - 100)
             t_idx = max(50, t_idx)
 
@@ -347,18 +308,18 @@ class ImprovedKaggleRLFactorSystem:
                               for f in factor_names)
                     signal[j] = sig
 
-            # 计算reward: 基于信号与后续收益的相关性
+            # Compute reward: correlation between signal and subsequent returns
             if len(signal) > 10:
                 future_ret = returns[t_idx:t_idx + len(signal)]
                 if len(future_ret) > 10 and np.std(signal) > 1e-8 and np.std(future_ret) > 1e-8:
-                    # 相关性部分
+                    # Correlation component
                     corr = np.corrcoef(signal, future_ret[:len(signal)])[0, 1]
                     corr = corr if not np.isnan(corr) else 0.0
 
-                    # ✅ 权重方差惩罚
+                    # Weight variance penalty
                     weight_var = np.var(list(weights.values()))
 
-                    # ✅ 综合Reward: 相关性 - λ·方差
+                    # Composite reward: correlation - λ * variance
                     reward = corr - lambda_var * weight_var
                     reward = max(-1.0, min(1.0, reward))
                 else:
@@ -366,13 +327,13 @@ class ImprovedKaggleRLFactorSystem:
             else:
                 reward = 0.0
 
-            # 新状态：稍微调整权重
+            # New state: slightly perturbed weights
             next_state = state + np.random.randn(len(state)) * 0.1
-            done = np.random.random() < 0.05  # 5% 概率结束
+            done = np.random.random() < 0.05  # 5% probability to end
 
             return reward, next_state, done
 
-        # 训练
+        # Training loop
         for ep in range(n_episodes):
             init_state = np.random.randn(len(factor_names))
             total_reward = self.agent.train_episode(
@@ -381,7 +342,7 @@ class ImprovedKaggleRLFactorSystem:
                 available_actions=['buy', 'sell', 'hold']
             )
 
-            # 动态调整epsilon
+            # Dynamically adjust epsilon
             self.agent.epsilon = max(
                 self.agent.epsilon_min,
                 self.agent.epsilon * 0.995
@@ -394,9 +355,9 @@ class ImprovedKaggleRLFactorSystem:
 
         print("RL training complete\n")
 
-        # ✅ 改动3: Top-K权重加权平均
+        # Top-K weight averaging (if snapshots exist)
         if len(self.weight_snapshots) == 0:
-            print("⚠️ 未记录权重快照,返回IC平均权重")
+            print("No weight snapshots recorded, returning IC-based average weights")
             q_scores = {}
             for fname in factor_names:
                 ic_val = factor_ics.get(fname, 0.0)
@@ -408,7 +369,7 @@ class ImprovedKaggleRLFactorSystem:
             else:
                 final_weights = {f: 1.0 / len(factor_names) for f in factor_names}
         else:
-            # 按score排序
+            # Sort snapshots by score
             sorted_snapshots = sorted(
                 self.weight_snapshots,
                 key=lambda x: x['score'],
@@ -416,7 +377,7 @@ class ImprovedKaggleRLFactorSystem:
             )
             top_snapshots = sorted_snapshots[:min(top_k, len(sorted_snapshots))]
 
-            # 计算Top-K平均
+            # Compute Top-K average weights
             combined = {f: [] for f in factor_names}
             for snapshot in top_snapshots:
                 for fname in factor_names:
@@ -426,16 +387,16 @@ class ImprovedKaggleRLFactorSystem:
             for fname in factor_names:
                 final_weights[fname] = np.mean(combined[fname])
 
-            # 归一化
+            # Normalize
             total = sum(final_weights.values())
             if total > 1e-8:
                 final_weights = {f: w / total for f, w in final_weights.items()}
             else:
                 final_weights = {f: 1.0 / len(factor_names) for f in factor_names}
 
-        # ✅ 改进的输出
-        print(f"因子权重汇总 (Top-K={top_k}):")
-        print(f"{'因子':<20} {'权重':<15}")
+        # Improved output
+        print(f"Factor weight summary (Top-K={top_k}):")
+        print(f"{'Factor':<20} {'Weight':<15}")
         print("-" * 35)
         for fname in sorted(final_weights.keys()):
             print(f"{fname:<20} {final_weights[fname]:>14.4f}")
@@ -443,23 +404,15 @@ class ImprovedKaggleRLFactorSystem:
         return final_weights
 
 
-# ============================================================
-# 改进的对标研究框架
-# ============================================================
-
+# Improved Benchmarking Framework
 class ImprovedBenchmarkingFramework:
-    """改进的对标研究框架"""
 
     def __init__(self, asset_type: str = 'stock'):
-        """
-        Args:
-            asset_type: 资产类型 ('stock', 'etf', 'futures')
-        """
         self.results_db = {}
         self.wf_results = None
         self.asset_type = asset_type
 
-        # 根据资产类型调整成本参数
+        # Adjust cost parameters based on asset type
         self.cost_params = {
             'stock': {'transaction': 15, 'borrow': 0.03, 'slippage': 5},
             'etf': {'transaction': 2, 'borrow': 0.01, 'slippage': 1},
@@ -472,8 +425,6 @@ class ImprovedBenchmarkingFramework:
                   borrow_cost_annual: float = 0.03,
                   slippage_bps_base: float = 5,
                   include_costs: bool = True) -> Dict:
-        """改进的回测：包含交易成本、融资成本、滑点"""
-
         if len(predictions) == 0 or len(returns) == 0:
             return {
                 'sharpe_gross': 0.0, 'sharpe_net': 0.0,
@@ -485,33 +436,33 @@ class ImprovedBenchmarkingFramework:
                 'cost_breakdown': {}, 'returns_gross': returns, 'returns_net': returns
             }
 
-        # 标准化预测
+        # Normalize predictions
         pred_std = np.std(predictions)
         if pred_std > 1e-8:
             pred_norm = (predictions - np.mean(predictions)) / pred_std
         else:
             pred_norm = predictions
 
-        # 头寸分配 (0-2)
+        # Position sizing (0-2)
         positions = np.clip((pred_norm + 3) / 6 * 2, 0, 2)
 
-        # 计算成本
+        # Compute costs
         position_changes = np.abs(np.diff(positions, prepend=positions[0]))
         daily_turnover_avg = np.mean(position_changes)
         turnover = daily_turnover_avg * 252  # 年化turnover
 
-        # 交易成本
+        # Transaction costs
         transaction_cost_rate = transaction_cost_bps / 10000
         transaction_costs = position_changes * transaction_cost_rate
 
-        # 融资成本
+        # Financing (borrow) costs
         short_positions = np.maximum(-positions, 0)
         daily_borrow_cost = short_positions * borrow_cost_annual / 252
 
-        # 滑点
+        # Slippage
         slippage_bps = np.minimum(position_changes * slippage_bps_base, 15) / 10000
 
-        # 策略收益
+        # Strategy returns
         strat_ret_gross = positions * returns
 
         if include_costs:
@@ -520,7 +471,7 @@ class ImprovedBenchmarkingFramework:
         else:
             strat_ret_net = strat_ret_gross
 
-        # 性能指标
+        # Performance metrics
         sharpe_gross = ImprovedBenchmarkingFramework._calculate_sharpe(
             strat_ret_gross, np.zeros_like(strat_ret_gross)
         )
@@ -531,18 +482,18 @@ class ImprovedBenchmarkingFramework:
         volatility_gross = np.std(strat_ret_gross) * np.sqrt(252)
         volatility_net = np.std(strat_ret_net) * np.sqrt(252)
 
-        # IC计算
+        # IC
         if len(returns) > 60:
             ic = np.corrcoef(pred_norm, returns)[0, 1]
             ic = ic if not np.isnan(ic) else 0.0
         else:
             ic = 0.0
 
-        # 累积收益
+        # Cumulative returns
         cum_return_gross = np.prod(1 + strat_ret_gross) - 1
         cum_return_net = np.prod(1 + strat_ret_net) - 1
 
-        # 最大回撤
+        # Max drawdown
         cumsum_gross = np.cumprod(1 + strat_ret_gross)
         cumsum_net = np.cumprod(1 + strat_ret_net)
 
@@ -551,11 +502,11 @@ class ImprovedBenchmarkingFramework:
         max_dd_net = (np.min(cumsum_net) / np.max(cumsum_net[:np.argmin(cumsum_net) + 1]) - 1) if np.argmin(
             cumsum_net) > 0 else 0.0
 
-        # Calmar比率
+        # Calmar ratio
         calmar_gross = sharpe_gross / abs(max_dd_gross + 1e-8) if max_dd_gross != 0 else 0.0
         calmar_net = sharpe_net / abs(max_dd_net + 1e-8) if max_dd_net != 0 else 0.0
 
-        # 成本分解
+        # Cost breakdown
         cost_breakdown = {
             'total_turnover': float(turnover),
             'transaction_cost_total': float(np.sum(transaction_costs)),
@@ -591,7 +542,6 @@ class ImprovedBenchmarkingFramework:
 
     @staticmethod
     def _calculate_sharpe(returns: np.ndarray, rf_rate: np.ndarray) -> float:
-        """计算Sharpe比"""
         if len(returns) == 0:
             return 0.0
         excess = returns - rf_rate
@@ -602,8 +552,6 @@ class ImprovedBenchmarkingFramework:
 
     @staticmethod
     def _train_lightgbm_cv(X_train, y_train, X_test, n_splits=5) -> np.ndarray:
-        """改进的LightGBM训练"""
-
         hyperparams = {
             'objective': 'regression',
             'metric': 'mse',
@@ -653,10 +601,8 @@ class ImprovedBenchmarkingFramework:
 
     def run_comprehensive_comparison(self, data: RLDataFrame,
                                      train_end_idx: int) -> Dict:
-        """运行综合对比"""
-
         print("\n" + "=" * 100)
-        print("SIMPLE BACKTEST: Train/Test Split (改进版)")
+        print("SIMPLE BACKTEST: Train/Test Split")
         print("=" * 100)
 
         train_X = data.features.iloc[:train_end_idx].values
@@ -685,7 +631,7 @@ class ImprovedBenchmarkingFramework:
         print(f"  Sharpe (Net): {lgb_result['sharpe_net']:.4f}")
 
         # 3. RL Factor System
-        print("\n[Model 3] RL Factor System (改进版)")
+        print("\n[Model 3] RL Factor System")
         rl_system = ImprovedKaggleRLFactorSystem(data, train_end_idx)
         factors_full = rl_system.extract_factors_from_kaggle()
 
@@ -713,21 +659,16 @@ class ImprovedBenchmarkingFramework:
 
 
 def main():
-    """主函数"""
 
-    print("\n" + "=" * 100)
-    print("KAGGLE RL INTEGRATION RESEARCH - REAL-WORLD FIXED VERSION")
-    print("=" * 100 + "\n")
-
-    # 1. 数据准备
-    print("[Phase 1] Data Preparation")
+    # Data preparation
+    print("Data Preparation")
     print("-" * 100)
 
     data_prep = KaggleRLDataPreparator('train.csv', lookback=20)
     rl_data = data_prep.prepare()
 
     train_end_idx = int(len(rl_data.returns) * 0.8)
-    # ✅ 改动1: 防御性检查
+    # Defensive checks
     MIN_TRAIN_SAMPLES = 300
     MIN_TEST_SAMPLES = 100
     assert train_end_idx >= MIN_TRAIN_SAMPLES, \
@@ -738,15 +679,14 @@ def main():
     print(f"Train samples: {train_end_idx}")
     print(f"Test samples: {len(rl_data.returns) - train_end_idx}\n")
 
-    # 2. 综合对比
-    print("[Phase 2] Comprehensive Comparison")
+    # Comprehensive comparison
+    print("Comprehensive Comparison")
     print("-" * 100)
 
     framework = ImprovedBenchmarkingFramework(asset_type='stock')
     simple_results = framework.run_comprehensive_comparison(rl_data, train_end_idx)
 
-    # 3. 生成报告
-    print("\n[Phase 3] Generate Report")
+    print("\nGenerate Report")
     print("-" * 100)
 
     ranked = sorted(simple_results.items(), key=lambda x: x[1]['sharpe_net'], reverse=True)
@@ -765,7 +705,7 @@ def main():
         print(f"   Avg Position:   {result['avg_position']:>8.4f}")
 
     print("\n" + "=" * 100)
-    print("✓ Research Complete!")
+    print("Research Complete!")
     print("=" * 100)
 
 

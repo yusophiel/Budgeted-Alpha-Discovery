@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Alpha Factor System - Complete Production Version
-包含所有必要的类和方法，完全兼容 rl_complete_demo.py
-"""
 
 import warnings
 
@@ -16,10 +12,7 @@ from collections import deque
 import os
 
 
-# ============================================================
 # Core Data Structures
-# ============================================================
-
 @dataclass
 class FactorConfig:
     """因子配置类"""
@@ -30,12 +23,8 @@ class FactorConfig:
     turnover_limit: float = 0.5
 
 
-# ============================================================
-# RPN Parser (反向波兰式解析器)
-# ============================================================
-
+# RPN Parser (Reverse Polish Notation)
 class ReversePolishNotationParser:
-    """支持RPN表达式的因子解析器"""
 
     def __init__(self):
         self.operators = {
@@ -49,7 +38,6 @@ class ReversePolishNotationParser:
         }
 
     def parse(self, rpn_expr: str, data_dict: Dict[str, np.ndarray]) -> np.ndarray:
-        """解析RPN表达式"""
         stack = deque()
         tokens = rpn_expr.split()
 
@@ -74,12 +62,8 @@ class ReversePolishNotationParser:
         return stack.pop()
 
 
-# ============================================================
-# Factor Pool Manager (因子池管理器)
-# ============================================================
-
+# Factor Pool Manager
 class FactorPoolManager:
-    """因子池管理：注册、计算、评估因子"""
 
     def __init__(self, config: FactorConfig):
         self.config = config
@@ -88,12 +72,10 @@ class FactorPoolManager:
         self.rpn_parser = ReversePolishNotationParser()
 
     def register_factor(self, name: str, rpn_expr: str):
-        """注册因子"""
         self.factors[name] = rpn_expr
         self.factor_scores[name] = {'ic': 0, 'icir': 0, 'turnover': 0}
 
     def compute_factor(self, rpn_expr: str, price_data: pd.DataFrame) -> pd.Series:
-        """根据RPN表达式计算因子"""
         data_dict = {
             'close': price_data['close'].values,
             'open': price_data['open'].values,
@@ -109,21 +91,15 @@ class FactorPoolManager:
 
     @staticmethod
     def _sma(series: pd.Series, window: int) -> pd.Series:
-        """简单移动平均"""
         return series.rolling(window=window).mean()
 
     @staticmethod
     def _std(series: pd.Series, window: int) -> pd.Series:
-        """滚动标准差"""
         return series.rolling(window=window).std()
 
 
-# ============================================================
 # Analytics Helpers
-# ============================================================
-
 class FactorBacktestAnalyzer:
-    """金融分析工具"""
 
     @staticmethod
     def _safe_series(x) -> pd.Series:
@@ -135,7 +111,6 @@ class FactorBacktestAnalyzer:
         return x
 
     def calculate_sharpe_ratio(self, returns: pd.Series, risk_free: float = 0.0) -> float:
-        """计算Sharpe比率（年化）"""
         r = self._safe_series(returns)
         if len(r) == 0:
             return 0.0
@@ -150,7 +125,6 @@ class FactorBacktestAnalyzer:
         return float(sharpe)
 
     def calculate_max_drawdown(self, returns: pd.Series) -> float:
-        """计算最大回撤"""
         r = self._safe_series(returns)
         if len(r) == 0:
             return 0.0
@@ -164,10 +138,8 @@ class FactorBacktestAnalyzer:
 
 
 class IntelligentFactorEnhancer:
-    """智能因子增强器：制度检测和衰减监控"""
 
     def detect_market_regime(self, returns: pd.Series, win: int = 60) -> str:
-        """按滚动波动率检测市场制度"""
         if returns is None or len(returns) == 0:
             return "unknown"
         vol = returns.rolling(win).std().bfill()
@@ -179,7 +151,6 @@ class IntelligentFactorEnhancer:
         return "crisis"
 
     def detect_factor_decay(self, factor: pd.Series, lookback: int = 120, thr: float = 0.1) -> bool:
-        """检测因子衰减"""
         if factor is None or len(factor) < lookback:
             return False
         tail = factor.dropna().tail(lookback)
@@ -190,7 +161,6 @@ class IntelligentFactorEnhancer:
 
 
 class LLMEnhancer:
-    """LLM增强器：可选的LLM权重优化"""
 
     def __init__(self, model_name: str = "mistral", simulate_available: bool = True, verbose: bool = True):
         self.model_name = model_name
@@ -202,14 +172,13 @@ class LLMEnhancer:
 
     def enhance_weights(self, factors_dict: Dict[str, pd.Series], weights: Dict[str, float],
                         market_regime: str = "normal", context: Dict = None) -> Dict[str, float]:
-        """增强权重（带自动降级）"""
         if self.verbose and self.is_available():
             print(f"Using Ollama service (model: {self.model_name})")
 
         if not self.is_available():
             return dict(weights)
 
-        # 制度感知的权重调整
+        # Regime-aware adjustment of weights
         w = dict(weights)
         keys = sorted(w.keys())
         if len(keys) == 0:
@@ -224,7 +193,7 @@ class LLMEnhancer:
             if "Volume" in w:
                 w["Volume"] = min(1.0, w["Volume"] + 0.02)
 
-        # 正规化
+        # Normalize weights
         for k in list(w.keys()):
             w[k] = max(0.0, float(w[k]))
         s = sum(w.values()) or 1.0
@@ -235,15 +204,10 @@ class LLMEnhancer:
         return w
 
 
-# ============================================================
 # Backtest Engine
-# ============================================================
-
 class BacktestEngine:
-    """回测引擎：按分组回测"""
 
     def backtest_factor(self, factor: pd.Series, returns: pd.Series, n_groups: int = 5) -> Dict[str, float]:
-        """对因子进行分组回测"""
         idx = factor.index.intersection(returns.index)
         if len(idx) == 0:
             return {"long_short_return": 0.0, "long_return": 0.0, "short_return": 0.0}
@@ -271,12 +235,8 @@ class BacktestEngine:
         return {"long_short_return": ls, "long_return": long_ret, "short_return": short_ret}
 
 
-# ============================================================
 # Dynamic Factor Enhancer
-# ============================================================
-
 class DynamicFactorEnhancer:
-    """动态因子增强器"""
 
     def __init__(self, llm_enhancer: Optional[LLMEnhancer] = None, verbose: bool = True):
         self.llm_enhancer = llm_enhancer or LLMEnhancer(simulate_available=True, verbose=verbose)
@@ -285,8 +245,7 @@ class DynamicFactorEnhancer:
 
     def optimize_weights(self, scores: Dict[str, float], base_weights: Dict[str, float],
                          returns: pd.Series) -> Dict[str, float]:
-        """优化权重（启发式 + LLM增强）"""
-        # 第1阶段：启发式权重调整
+        # Stage 1: heuristic weighting based on scores
         w = {}
         for k, v in scores.items():
             w[k] = max(0.0, float(v))
@@ -297,19 +256,15 @@ class DynamicFactorEnhancer:
         else:
             w = {k: v / s for k, v in w.items()}
 
-        # 第2阶段：LLM调整（带降级）
+        # Stage 2: LLM-based adjustment (with fallback)
         regime = self.intel.detect_market_regime(returns)
         ctx = {"regime": regime, "scores": dict(scores)}
         w2 = self.llm_enhancer.enhance_weights({}, w, market_regime=regime)
         return w2
 
 
-# ============================================================
 # Main AlphaFactorSystem
-# ============================================================
-
 class AlphaFactorSystem:
-    """完整的因子生成系统"""
 
     def __init__(self, config: FactorConfig = None, llm_enhancer: Optional[LLMEnhancer] = None):
         self.config = config or FactorConfig("Default", 20, 'D')
@@ -321,11 +276,9 @@ class AlphaFactorSystem:
         self.factor_funcs: Dict[str, Callable[[pd.DataFrame], pd.Series]] = {}
 
     def register_factor(self, name: str, func: Callable[[pd.DataFrame], pd.Series]):
-        """注册因子函数"""
         self.factor_funcs[name] = func
 
     def compute_factors(self, price_df: pd.DataFrame) -> Dict[str, pd.Series]:
-        """计算所有注册的因子"""
         out = {}
         for name, fn in self.factor_funcs.items():
             try:
@@ -336,7 +289,6 @@ class AlphaFactorSystem:
         return out
 
     def _calc_ic(self, factor: pd.Series, returns: pd.Series) -> float:
-        """计算IC"""
         idx = factor.index.intersection(returns.index)
         if len(idx) < 10:
             return 0.0
@@ -347,7 +299,6 @@ class AlphaFactorSystem:
         return float(pd.Series(x).corr(pd.Series(y)))
 
     def _calc_icir(self, factor: pd.Series, returns: pd.Series, win: int = 60) -> float:
-        """计算ICIR"""
         idx = factor.index.intersection(returns.index)
         if len(idx) < win:
             return 0.0
@@ -366,7 +317,6 @@ class AlphaFactorSystem:
         return float(np.mean(rolling) / (np.std(rolling, ddof=1) + 1e-12))
 
     def _calc_turnover(self, factor: pd.Series, win: int = 20) -> float:
-        """计算换手率"""
         x = factor.replace([np.inf, -np.inf], np.nan).dropna()
         if len(x) < win + 1:
             return 0.0
@@ -374,7 +324,6 @@ class AlphaFactorSystem:
         return float(d.tail(win).mean())
 
     def evaluate_factors(self, factors: Dict[str, pd.Series], returns: pd.Series) -> pd.DataFrame:
-        """评估因子"""
         rows = []
         for name, f in factors.items():
             ic = self._calc_ic(f, returns)
@@ -395,7 +344,6 @@ class AlphaFactorSystem:
         return df
 
     def select_factors(self, eval_df: pd.DataFrame, top_k: int = 3) -> List[str]:
-        """选择因子"""
         if eval_df is None or len(eval_df) == 0:
             return []
         df = eval_df.copy()
@@ -406,7 +354,6 @@ class AlphaFactorSystem:
 
     def optimize_weights(self, selected: List[str], factor_scores: Dict[str, float],
                          returns: pd.Series) -> Dict[str, float]:
-        """优化权重"""
         base = {k: max(0.0, factor_scores.get(k, 0.0)) for k in selected}
         s = sum(base.values())
         if s == 0.0 and len(selected) > 0:
@@ -419,7 +366,6 @@ class AlphaFactorSystem:
 
     def combine_factors(self, factors: Dict[str, pd.Series],
                         weights: Dict[str, float]) -> Optional[pd.Series]:
-        """组合因子"""
         if len(factors) == 0 or len(weights) == 0:
             return None
         series_list = []
@@ -435,7 +381,6 @@ class AlphaFactorSystem:
 
     def backtest_by_regime(self, composite_factor: pd.Series, returns: pd.Series,
                            win: int = 60) -> pd.DataFrame:
-        """按制度回测"""
         if composite_factor is None or len(composite_factor) == 0:
             return pd.DataFrame(columns=["regime", "n_days", "ls", "sharpe", "mdd"])
 
@@ -473,8 +418,7 @@ class AlphaFactorSystem:
 
     def run_pipeline(self, price_df: pd.DataFrame, returns_data: pd.Series,
                      factor_definitions: Dict[str, str], top_k: int = 3) -> Dict:
-        """执行完整管道"""
-        # 计算因子
+        # Compute RPN-based factors
         print("Computing factors...")
         factors = {}
         for name, rpn_expr in factor_definitions.items():
@@ -484,26 +428,26 @@ class AlphaFactorSystem:
                 print(f"{name}: Computation successful")
             except Exception as e:
                 print(f"{name}: Computation failed → {e}")
-        # 评估因子
+        # Evaluate factors
         print("\nEvaluating factors...")
         eval_df = self.evaluate_factors(factors, returns_data)
 
-        # 选择因子
+        # Select factors
         print("\nSelecting factors...")
         selected = self.select_factors(eval_df, top_k=top_k)
 
-        # 优化权重
+        # Optimize weights
         print("\nOptimizing weights...")
         scores = {k: eval_df.loc[k, 'ic'] for k in selected if k in eval_df.index}
         weights = self.optimize_weights(selected, scores, returns_data)
 
-        # 组合因子
+        # Combine factors
         print("\nCombining factors...")
         composite = self.combine_factors(factors, weights)
         if composite is not None:
             print("Composite factor created successfully")
 
-        # 回测
+        # Backtest composite
         print("\nBacktesting...")
         if composite is not None:
             res = self.backtest_engine.backtest_factor(composite, returns_data)
