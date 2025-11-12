@@ -15,8 +15,6 @@ This repository implements a **modular, production-grade quantitative factor-min
 
 Validated on **600+ synthetic trading days** and **real Kaggle S&P 500 data** (8-factor daily). When applied to live market data, the RL+LLM approach achieved **+16.6% Sharpe improvement** over naive ML (0.536 vs 0.459), while demonstrating that market efficiency in daily equity returns aligns with Efficient Market Hypothesis predictions.
 
----
-
 ### System Architecture
 
 ```
