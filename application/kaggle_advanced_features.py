@@ -160,7 +160,6 @@ class RobustJSONExtractor:
                 if target_keys:
                     keys = set(parsed.keys())
                     target_set = set(target_keys)
-                    # 至少要有50%的目标键
                     if len(keys & target_set) < len(target_set) * 0.5:
                         self.logger.debug(
                             f"Skipping candidate: only {len(keys & target_set)}/{len(target_set)} keys matched"
@@ -224,7 +223,7 @@ class DynamicCheckpointing:
         path = os.path.join(self.outdir, self.filename)
         with open(path, "w") as f:
             json.dump(payload, f, indent=2)
-        self.logger.info(f"Checkpoint saved → {path}")
+        self.logger.info(f"Checkpoint saved to {path}")
 
 
 class RewardCheckpointCallback:
@@ -458,7 +457,7 @@ class ReinforcementLearningFactorAgent:
         old_eps = self.epsilon
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
         self.logger.debug(
-            f"Epsilon decayed: {old_eps:.4f} → {self.epsilon:.4f}"
+            f"Epsilon decayed: {old_eps:.4f} to {self.epsilon:.4f}"
         )
 
     def snapshot(self) -> Dict:
@@ -509,7 +508,7 @@ class ReinforcementLearningFactorAgent:
 
             # Compute adaptive tolerance
             if early_stop_strategy == "adaptive":
-                progress = step / max_steps  # 0 到 1
+                progress = step / max_steps
                 adaptive_eps = improve_eps * (1.0 + progress * 5.0)
                 
                 self.logger.debug(

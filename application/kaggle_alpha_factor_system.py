@@ -15,7 +15,6 @@ import os
 # Core Data Structures
 @dataclass
 class FactorConfig:
-    """因子配置类"""
     name: str
     lookback_period: int
     rebalance_freq: str
@@ -285,7 +284,7 @@ class AlphaFactorSystem:
                 out[name] = fn(price_df).rename(name)
                 print(f"{name}: Computation successful")
             except Exception as e:
-                print(f"{name}: Computation failed → {e}")
+                print(f"{name}: Computation failed: {e}")
         return out
 
     def _calc_ic(self, factor: pd.Series, returns: pd.Series) -> float:
@@ -427,7 +426,7 @@ class AlphaFactorSystem:
                 factors[name] = factor
                 print(f"{name}: Computation successful")
             except Exception as e:
-                print(f"{name}: Computation failed → {e}")
+                print(f"{name}: Computation failed for {e}")
         # Evaluate factors
         print("\nEvaluating factors...")
         eval_df = self.evaluate_factors(factors, returns_data)
