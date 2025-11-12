@@ -44,32 +44,32 @@ FACTOR_DEFINITIONS = {
 # Reward Configuration
 REWARD_CONFIG = {
     'reward_mode': 'sharpe',  # Sharpe-based reward mode
-    'mdd_penalty': 0.3,  # Changed from 0.8 to 0.3, reduce excessive drawdown penalty
-    'normalize': 1.0,  # Changed from 10.0 to 1.0, stop over-compression
+    'mdd_penalty': 0.3,
+    'normalize': 1.0,
 }
 
 # Trading Cost Configuration
 COST_CONFIG = {
-    'fee_rate': 0.0005,  # Changed to 0.05% (from 0.2%)
-    'spread': 0.0001,  # Changed to 0.01% (from 0.03%)
-    'pos_cost': 0.0001,  # Changed to 0.01% (from 0.1%)
+    'fee_rate': 0.0005,
+    'spread': 0.0001,
+    'pos_cost': 0.0001,
     'lambda_turnover': 0.01,  # Turnover penalty coefficient
 }
 
 # RL Training Configuration
 RL_CONFIG = {
-    'num_episodes': 30,  # Changed from 12 to 30, more training
-    'max_steps': 80,  # Changed from 50 to 80, longer episodes
-    'early_stop_patience': 10,  # Changed from 5 to 10, reduce early stop sensitivity
+    'num_episodes': 30,
+    'max_steps': 80,
+    'early_stop_patience': 10,
     'no_improve_burnin': 15,  # Added 15 burnin steps
-    'learning_rate': 0.15,  # Changed from 0.1 to 0.15, faster learning
-    'epsilon': 0.3,  # Changed from 0.25 to 0.3, more exploration
+    'learning_rate': 0.15,
+    'epsilon': 0.3,
 }
 
 # Environment Configuration
 ENV_CONFIG = {
-    'W': 60,  # Changed from 120 to 60, shorter lookback
-    'H': 60,  # Changed from 35 to 60, longer observation window
+    'W': 60,
+    'H': 60,
     'threshold': 0.10,  # Signal threshold
     'selector_mode': 'softmax',  # Factor selection mode
 }
@@ -103,11 +103,9 @@ def generate_synthetic_data_improved(n_days: int = 1000, n_assets: int = 1) -> t
 
     S0 = 100
 
-    # Improved: Higher return level
     mu_base = 0.0015  # Changed to 0.15% daily return
     sigma = 0.018  # Changed to 1.8% daily volatility (moderate)
 
-    # Improved: Add momentum and mean reversion features
     returns_list = []
     prev_ret = 0.0
     vol_regime = 0.015  # Initial volatility regime
