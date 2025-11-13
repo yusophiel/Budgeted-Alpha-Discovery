@@ -2,18 +2,18 @@
 
 ## Project Overview
 
-This repository implements a **modular, production-grade quantitative factor-mining system** integrating factor research, reinforcement learning, and local LLM optimization. 
+This repository implements a **modular quantitative factor-mining system** integrating factor research, reinforcement learning, and local LLM optimization.
 
-**My core contribution** designs an end-to-end hybrid ML + quantitative framework combining:
+My core contribution is an end-to-end hybrid ML + quantitative framework combining:
 
-- **IC/ICIR-driven factor evaluation** (Information Coefficient + Information Ratio with statistical rigor)
-- **Market regime detection** (4-state volatility classification: low_vol / normal / high_vol / crisis)
-- **Reinforcement learning agent** (Q-learning with adaptive factor-weight policies)
-- **Local LLM integration** (Ollama-powered interpretable weight optimization)
-- **RPN-based factor construction** (intuitive, composable factor definitions)
-- **Production-ready deployment** (checkpoint system, decay monitoring, comprehensive backtesting)
+- **IC/ICIR-driven factor evaluation**
+- **Volatility-based market regime detection** (low_vol / normal / high_vol / crisis)
+- **Q-learning agent** for adaptive factor-weight policies
+- **Local LLM (Ollama) integration** for interpretable weight optimization with fallback
+- **RPN-based factor construction** for composable factor definitions
+- **Production-ready pipeline** with checkpointing, decay monitoring, and full backtesting
 
-Validated on **600+ synthetic trading days** and **real Kaggle S&P 500 data** (8-factor daily). When applied to live market data, the RL+LLM approach achieved **+16.6% Sharpe improvement** over naive ML (0.536 vs 0.459), while demonstrating that market efficiency in daily equity returns aligns with Efficient Market Hypothesis predictions.
+The framework is validated on **600+ synthetic trading days** and **real Kaggle S&P 500 data** (8-factor daily). On the Hull Tactical–style dataset, the RL+LLM approach improved Sharpe by **+16.6 %** over naive ML (0.459 → 0.536), while still underperforming Buy-and-Hold after trading costs—evidence of **low-signal behavior consistent with the Efficient Market Hypothesis (EMH)**.
 
 ### System Architecture
 
@@ -30,7 +30,7 @@ Market Regime Detection (low_vol / normal / high_vol / crisis)
     ↓         ↓        ↓          ↓
   RL Agent  LLM Opt  Factor Pool  ← Three parallel paths
     ↓         ↓        ↓          ↓
-    └─────────┴────┬──────────────┘
+    └─────────┴────┬───┴──────────┘
                    ↓
 Dynamic Factor Weights + Portfolio Signals
                    ↓
@@ -42,87 +42,13 @@ Dynamic Factor Weights + Portfolio Signals
 
 ## Features
 
-**End-to-End Factor Pipeline** – IC/ICIR evaluation, turnover tracking, decay monitoring  
-**Market Regime Classification** – Volatility-based 4-state detector with regime-aware backtesting  
-**RL Agent** – Q-learning allocator learning adaptive factor weights  
-**LLM Integration** – Ollama-based weight optimization (JSON-safe + fallback rules)  
-**RPN Factor Parser** – Expressive factor definitions (e.g., `close sma_20 - sma_50 +`)  
+**End-to-End Factor Pipeline** – IC/ICIR evaluation, turnover tracking, decay monitoring
+**Market Regime Classification** – 4-state volatility detector with regime-aware backtests
+**RL Agent** – Q-learning allocator learning adaptive factor weights across regimes
+**LLM Integration** – Ollama-based weight optimization with JSON-safe parsing and rule-based fallback  
+**RPN Factor Parser** – Expressive, ambiguity-free factor definitions  
 **Production Architecture** – Checkpoint callbacks, rolling validation, no-lookahead enforcement  
-**Multi-Factor Backtesting** – Long-short quantile portfolios with cost impact analysis  
-**Statistical Diagnostics** – Regime-conditioned performance decomposition, IC significance tests  
-
----
-
-## Core Contributions
-
-### 1. End-to-End Factor Research Pipeline
-
-**Statistically rigorous workflow:**
-- **IC Evaluation**: Pearson correlation(factor, next_period_return)
-- **ICIR Stability**: Distinguishes "lucky once" from "consistently predictive"
-- **Turnover Tracking**: Cost estimation and factor volatility assessment
-- **Market Regime**: 4-state model (low_vol ≤ Q1 | normal | high_vol | crisis > Q3)
-- **Decay Monitoring**: Detects alpha weakening via amplitude decay thresholds
-- **Regime-Aware Backtesting**: Separate performance analysis per market regime
-
-**Workflow:**
-```
-Raw Factors → IC/ICIR → Factor Selection (top K by ICIR)
-                        ↓
-Regime Detection → Weight Optimization → Portfolio Construction
-                        ↓
-N-Group Backtesting → Risk Diagnostics (Sharpe, max DD, costs)
-```
-
-### 2. Reinforcement Learning Agent for Adaptive Allocation
-
-**Custom Q-learning agent:**
-- **State Space**: IC bins | ICIR bins | market regime | portfolio exposure | weight concentration
-- **Action Space**: buy / sell / hold / rebalance / factor-shift
-- **Training**: Multi-start rolling training with no-lookahead validation
-- **Reward**: `R = α×alpha_correlation - β×vol_penalty - γ×turnover_cost - δ×regime_risk`
-- **Performance**: Reward improved from −10.07 → +0.58
-
-Learns to dynamically adjust factor weights based on market regime without overfitting.
-
-### 3. Modular, Production-Ready Architecture
-
-| Component | Responsibility |
-|-----------|-----------------|
-| **RPN Parser** | Parse factor expressions → vectorized operations |
-| **Factor Pool Manager** | Register, compute, cache factor values |
-| **Regime Detector** | Classify market state via volatility quantiles |
-| **IC/ICIR Analyzer** | Compute information coefficients & stability |
-| **Backtest Engine** | N-group portfolio construction & evaluation |
-| **RL Allocator** | Learn adaptive factor weight policies |
-| **LLM Optimizer** | Dynamic rule-based weight adjustment |
-| **Checkpoint System** | Save best episodes, track improvements |
-
-All components independently testable, composable, and GPU-ready.
-
-### 4. Local LLM Integration for Quant Optimization
-
-**Direct LLM integration (Ollama) into factor research:**
-- Regime-aware weight smoothing ("boost defensive in crisis")
-- Concentration mitigation (prevent single-factor dominance)
-- Exposure normalization (ensure portfolio constraints)
-- JSON-formatted recommendations with interpretable reasoning
-
-**Safety Features:**
-- JSON-safe parsing with rule-based fallback
-- Automatic degradation if LLM unavailable
-- Weight sum/bound validation
-
-Creates a **hybrid research paradigm**:
-```
-Symbolic Factors + Statistical IC/ICIR
-                 ↓
-      Regime Detection Engine
-                 ↓
-RL-Learned Policies + LLM Reasoning
-                 ↓
-Interpretable, Regime-Aligned Signals
-```
+**Multi-Factor Backtesting** – Long–short quantile portfolios with cost & drawdown analysis  
 
 ---
 
@@ -130,38 +56,35 @@ Interpretable, Regime-Aligned Signals
 
 ```python
 # Stage 1: Factor Computation & Evaluation
-for factor in factor_definitions:
-    ic = correlation(factor, next_period_returns)
-    icir = mean(rolling_ic_60d) / std(rolling_ic_60d)
-    turnover = mean(abs(factor.diff()))
+for f in factors:
+    ic = corr(f, forward_returns)
+    icir = rolling_ic(f).mean() / rolling_ic(f).std()
+    turnover = f.diff().abs().mean()
 
 # Stage 2: Regime Detection
-regime = detect_regime(returns_60d)  # low_vol/normal/high_vol/crisis
+regime = detect_regime(returns_60d)   # low_vol / normal / high_vol / crisis
 
 # Stage 3: RL Weight Optimization
-state = encode_state(ic_bins, icir_bins, regime, exposure, concentration)
-action = rl_agent.policy_network(state)
-reward = composite_reward(alpha, vol_penalty, turnover_cost, regime_risk)
-rl_agent.update_q_value(state, action, reward, next_state)
+state  = encode_state(ic_bins, icir_bins, regime, exposure, concentration)
+action = rl_agent.select_action(state)
+reward = compute_reward(alpha_corr, volatility, turnover_cost, regime_risk)
+rl_agent.update(state, action, reward)
 
 # Stage 4: LLM Weight Enhancement
-llm_reasoning = local_ollama.optimize_weights(base_weights, regime, ic_values)
-enhanced_weights = parse_json_safe(llm_reasoning, fallback=default)
+proposal   = ollama.optimize_weights(base_weights, regime, ic_values)
+weights_ll = parse_json_safe(proposal, fallback=rule_based_fallback)
 
 # Stage 5: Portfolio Construction
-composite = sum(factor_values[i] * enhanced_weights[i])
-performance = {
-    'ic': correlation(composite, returns),
-    'sharpe': calculate_sharpe_ratio(portfolio_returns),
-    'max_dd': calculate_max_drawdown(cumulative_returns)
-}
+portfolio_signal = sum(weight[i] * factor[i] for i in factors)
+metrics = evaluate(portfolio_signal, returns)  # Sharpe, MaxDD, IC
 
 # Stage 6: Checkpointing & Decay Monitoring
-if performance['reward'] > best_reward:
-    checkpoint.save(weights, performance, regime)
-for factor in factors:
-    if detect_decay(factor, lookback=120):
-        alert_factor_decay(factor)
+if metrics["reward"] > best:
+    save_checkpoint(weights_ll, metrics, regime)
+
+for f in factors:
+    if detect_decay(f):
+        alert_decay(f)
 ```
 
 ---
@@ -172,46 +95,26 @@ for factor in factors:
 
 **Performance Analysis:**
 
-The results reveal important insights about market efficiency and alpha generation:
+The framework was applied to an 8-factor daily S&P 500 dataset (Hull Tactical style). Four strategies were benchmarked: Buy-and-Hold, Hybrid (IC-weighted), RLFactors, and LightGBM.
 
-1. **Alpha Exists But Is Tiny**
-   - Hybrid & RLFactors both achieved IC = +0.0129 (statistically significant, p < 0.001)
-   - Annualized IC ≈ 0.204 translates to ~1-2% gross alpha
-   - Significance test: t-statistic = 4.68, confirming genuine predictive power
+### **Key Findings**
 
-2. **Simpler Methods Beat Complex ML**
-   - Hybrid (3 factors, IC-weighted): Sharpe = 0.5357
-   - LightGBM (100 features, overfitted): IC = -0.0029, Sharpe = 0.4590
-   - Reason: LightGBM learned market noise, not signal
-     - Training MSE: 0.000495 (excellent fit)
-     - Test MSE: 0.001200 (2.4x worse - severe overfitting)
+- **Small but real alpha**: Hybrid & RLFactors both reached **IC = +0.0129**, statistically significant.
+- **RL+LLM improves over naive ML**: Net Sharpe **0.536 vs 0.459** (+16.6%).
+- **High turnover erodes alpha**: ~27–34% cost drag reduces active performance sharply.
+- **Hybrid & RLFactors converge**: identical IC and Sharpe → stable, non-overfit signal extraction.
+- **Passive still dominates**: Buy-and-Hold Sharpe **0.8843** > all active models.
 
-3. **Costs Dominate the Game**
-   - Daily Sharpe (gross): ~0.74 → Net Sharpe: ~0.54 (27% drag)
-   - Quarterly turnover: ~25% × 4 × 20bps = ~2% annual cost
-   - After costs, alpha barely survives (0.54 vs 0.88 for passive)
+### **Interpretation**
 
-4. **RL Learning Converges to Factor System Results**
-   - Hybrid: IC = +0.0129, Sharpe = 0.5357
-   - RLFactors: IC = +0.0129, Sharpe = 0.5357
-   - Difference < 0.01% on all metrics
-   - **Implication**: Both algorithms discovered the same fundamental strategy, proving robustness and not overfitting
+The framework reveals **low-signal market behavior consistent with EMH**.
+Both Hybrid and RLFactors uncover a genuine but very weak alpha  
+(IC = +0.0129, t-stat = 4.68), yet the signal is too small relative to  
+turnover-induced cost drag (~27–34%).  
 
-5. **Buy-and-Hold Remains Optimal**
-   - Passive: 0.8843 > All active strategies
-   - Zero turnover = no cost drag
-   - Validates Efficient Market Hypothesis: in efficient markets with weak signals, passive beats active
-
-**What This Tells Us About Market Efficiency:**
-
-The framework successfully extracted whatever alpha exists (IC ≈ 0.01), but this weak signal cannot overcome trading costs (27-34% drag). This is exactly what Efficient Market Hypothesis predicts:
-
-- Daily S&P 500 is highly efficient (arbitraged by many participants)
-- Short-horizon alpha is rare and small
-- Passive strategies are theoretically optimal
-- Active trading requires institutional-scale costs to be viable
-
-The convergence of two independent algorithms (Hybrid + RLFactors) to identical IC and Sharpe values provides strong evidence that this result is not a statistical artifact but reflects the true equilibrium in this market.
+As a result, net Sharpe ratios fall below passive Buy-and-Hold, illustrating
+the EMH prediction that in highly efficient markets, weak predictive edges  
+cannot overcome realistic trading frictions.
 
 ---
 
