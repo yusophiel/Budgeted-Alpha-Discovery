@@ -8,7 +8,7 @@ My core contribution is an end-to-end hybrid ML + quantitative framework combini
 
 - **IC/ICIR-driven factor evaluation**
 - **Volatility-based market regime detection** (low_vol / normal / high_vol / crisis)
-- **Q-learning agent** for adaptive factor-weight policies
+- **Q-learning agent** for adaptive factor-weight policies, using a structured state representation based on discretized IC/ICIR bins, market regime, current exposure, and weight concentration
 - **Local LLM (Ollama) integration** for interpretable weight optimization with fallback
 - **RPN-based factor construction** for composable factor definitions
 - **Production-ready pipeline** with checkpointing, decay monitoring, and full backtesting
@@ -44,7 +44,7 @@ Dynamic Factor Weights + Portfolio Signals
 
 - **End-to-End Factor Pipeline**: IC/ICIR evaluation, turnover tracking, decay monitoring
 - **Market Regime Classification**: 4-state volatility detector with regime-aware backtests
-- **RL Agent**: Q-learning allocator learning adaptive factor weights across regimes
+- **RL Agent (Q-learning)**: Learns adaptive factor-weight policies using a structured state encoding: discretized IC/ICIR bins, volatility regime, current position/exposure, and factor-weight concentration
 - **LLM Integration**: Ollama-based weight optimization with JSON-safe parsing and rule-based fallback  
 - **RPN Factor Parser**: Expressive, ambiguity-free factor definitions  
 - **Production Architecture**: Checkpoint callbacks, rolling validation, no-lookahead enforcement  
