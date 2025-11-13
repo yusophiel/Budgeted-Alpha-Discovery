@@ -43,12 +43,12 @@ Dynamic Factor Weights + Portfolio Signals
 ## Features
 
 - **End-to-End Factor Pipeline**: IC/ICIR evaluation, turnover tracking, decay monitoring
-- **Market Regime Classification**: – 4-state volatility detector with regime-aware backtests
-- **RL Agent**: – Q-learning allocator learning adaptive factor weights across regimes
-- **LLM Integration**: – Ollama-based weight optimization with JSON-safe parsing and rule-based fallback  
-- **RPN Factor Parser**: – Expressive, ambiguity-free factor definitions  
-- **Production Architecture**: – Checkpoint callbacks, rolling validation, no-lookahead enforcement  
-- **Multi-Factor Backtesting**: – Long–short quantile portfolios with cost & drawdown analysis  
+- **Market Regime Classification**: 4-state volatility detector with regime-aware backtests
+- **RL Agent**: Q-learning allocator learning adaptive factor weights across regimes
+- **LLM Integration**: Ollama-based weight optimization with JSON-safe parsing and rule-based fallback  
+- **RPN Factor Parser**: Expressive, ambiguity-free factor definitions  
+- **Production Architecture**: Checkpoint callbacks, rolling validation, no-lookahead enforcement  
+- **Multi-Factor Backtesting**: Long–short quantile portfolios with cost & drawdown analysis  
 
 ---
 
@@ -97,7 +97,7 @@ for f in factors:
 
 The framework was applied to an 8-factor daily S&P 500 dataset (Hull Tactical style). Four strategies were benchmarked: Buy-and-Hold, Hybrid (IC-weighted), RLFactors, and LightGBM.
 
-### **Key Findings**
+**Key Findings**
 
 - **Small but real alpha**: Hybrid & RLFactors both reached **IC = +0.0129**, statistically significant.
 - **RL+LLM improves over naive ML**: Net Sharpe **0.536 vs 0.459** (+16.6%).
@@ -105,11 +105,10 @@ The framework was applied to an 8-factor daily S&P 500 dataset (Hull Tactical st
 - **Hybrid & RLFactors converge**: identical IC and Sharpe → stable, non-overfit signal extraction.
 - **Passive still dominates**: Buy-and-Hold Sharpe **0.8843** > all active models.
 
-### **Interpretation**
+**Interpretation**
 
 The framework reveals **low-signal market behavior consistent with EMH**.
-Both Hybrid and RLFactors uncover a genuine but very weak alpha  
-(IC = +0.0129, t-stat = 4.68), yet the signal is too small relative to  
+Both Hybrid and RLFactors uncover a genuine but very weak alpha (IC = +0.0129, t-stat = 4.68), yet the signal is too small relative to  
 turnover-induced cost drag (~27–34%).  
 
 As a result, net Sharpe ratios fall below passive Buy-and-Hold, illustrating
@@ -120,13 +119,11 @@ cannot overcome realistic trading frictions.
 
 ## Future Work
 
-1. Multi-factor regime classification (correlation, momentum, liquidity)
-2. Cross-sectional factors (market breadth, sector rotation)
-3. Advanced RL (Actor-Critic, PPO with continuous action space)
-4. Real-time deployment (Kafka/Redis streaming)
-5. Risk attribution decomposition by factor & regime
-6. Leverage & constraints (position limits, sector caps, drawdown stops)
-7. Alternative data (sentiment, satellite imagery, alternative datasets)
+1. **Multi-Timeframe Factor Fusion** – combine factors across lookback windows (5/10/20/60 days) for robust cross-horizon signals; dynamic weighting based on IC stability per regime.  
+2. **Cross-Asset Class Extensionn** – expand from S&P 500 to cryptocurrencies, commodities, and fixed income; unified IC/regime framework across asset classes.  
+3. **Proactive Factor Decay Warning System** – predict alpha decay before it occurs using IC trend momentum; automatic factor replacement triggers.
+4. **Composite Regime Classification** – enhance 4-state regime detector with correlation/momentum/liquidity signals; regime-specific factor pool selection.  
+5. **Production Real-Time Signal Pipeline** – implement incremental updates and streaming inference for daily live signal generation; checkpoint-based model rollback.
 
 ---
 
