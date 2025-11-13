@@ -42,13 +42,13 @@ Dynamic Factor Weights + Portfolio Signals
 
 ## Features
 
-**End-to-End Factor Pipeline** – IC/ICIR evaluation, turnover tracking, decay monitoring
-**Market Regime Classification** – 4-state volatility detector with regime-aware backtests
-**RL Agent** – Q-learning allocator learning adaptive factor weights across regimes
-**LLM Integration** – Ollama-based weight optimization with JSON-safe parsing and rule-based fallback  
-**RPN Factor Parser** – Expressive, ambiguity-free factor definitions  
-**Production Architecture** – Checkpoint callbacks, rolling validation, no-lookahead enforcement  
-**Multi-Factor Backtesting** – Long–short quantile portfolios with cost & drawdown analysis  
+- **End-to-End Factor Pipeline**: IC/ICIR evaluation, turnover tracking, decay monitoring
+- **Market Regime Classification**: – 4-state volatility detector with regime-aware backtests
+- **RL Agent**: – Q-learning allocator learning adaptive factor weights across regimes
+- **LLM Integration**: – Ollama-based weight optimization with JSON-safe parsing and rule-based fallback  
+- **RPN Factor Parser**: – Expressive, ambiguity-free factor definitions  
+- **Production Architecture**: – Checkpoint callbacks, rolling validation, no-lookahead enforcement  
+- **Multi-Factor Backtesting**: – Long–short quantile portfolios with cost & drawdown analysis  
 
 ---
 
