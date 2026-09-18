@@ -1,141 +1,73 @@
-# Algorithm-Driven Quantitative Factor Mining Framework
+# Budgeted Adaptive Falsification for Equity Alpha Discovery
 
-## Project Overview
+A Python research framework for deciding **which robustness test to run next** when validating equity alpha candidates under a limited budget.
 
-This repository implements a **modular quantitative factor-mining system** integrating factor research, reinforcement learning, and local LLM optimization.
+The pipeline generates symbolic factors, evaluates them in walk-forward windows, and compares adaptive test selection with fixed, random, and cost-based policies. It tracks survivor precision, recall, false eliminations, and research cost. An oracle policy provides a hindsight reference.
 
-My core contribution is an end-to-end hybrid ML + quantitative framework combining:
+## Quick start
 
-- **IC/ICIR-driven factor evaluation**
-- **Volatility-based market regime detection** (low_vol / normal / high_vol / crisis)
-- **Q-learning agent** for adaptive factor-weight policies, using a structured state representation based on discretized IC/ICIR bins, market regime, current exposure, and weight concentration
-- **Local LLM (Ollama) integration** for interpretable weight optimization with fallback
-- **RPN-based factor construction** for composable factor definitions
-- **Production-ready pipeline** with checkpointing, decay monitoring, and full backtesting
+Requires Python 3.10+.
 
-The framework is validated on **600+ synthetic trading days** and **real Kaggle S&P 500 data** (8-factor daily). On the Hull Tactical–style dataset, the RL+LLM approach improved Sharpe by **+16.6 %** over naive ML (0.459 → 0.536), while still underperforming Buy-and-Hold after trading costs—evidence of **low-signal behavior consistent with the Efficient Market Hypothesis (EMH)**.
-
-### System Architecture
-
-```
-        Raw Factors / Market Data
-                   ↓
-    Feature Engineering + RPN Parsing
-                   ↓
-    Factor Evaluation (IC / ICIR / Decay)
-                   ↓
-Market Regime Detection (low_vol / normal / high_vol / crisis)
-                   ↓
-    ┌─────────┬────┴───┬──────────┐
-    ↓         ↓        ↓          ↓
-  RL Agent  LLM Opt  Factor Pool  ← Three parallel paths
-    ↓         ↓        ↓          ↓
-    └─────────┴────┬───┴──────────┘
-                   ↓
-Dynamic Factor Weights + Portfolio Signals
-                   ↓
-       Backtesting + Risk Diagnostics
-(N-Group Long-Short | Regime Analysis | Cost Impact)
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+python -m adaptive_alpha.cli build-benchmark
 ```
 
----
+The default demo uses a fixed seed and small, generated dataset. No API key or external data is needed. Demo results illustrate the workflow; they are not evidence of investment performance.
 
-## Features
+Results are saved to `artifacts/demo/`:
 
-- **End-to-End Factor Pipeline**: IC/ICIR evaluation, turnover tracking, decay monitoring
-- **Market Regime Classification**: 4-state volatility detector with regime-aware backtests
-- **RL Agent (Q-learning)**: Learns adaptive factor-weight policies using a structured state encoding: discretized IC/ICIR bins, volatility regime, current position/exposure, and factor-weight concentration
-- **LLM Integration**: Ollama-based weight optimization with JSON-safe parsing and rule-based fallback  
-- **RPN Factor Parser**: Expressive, ambiguity-free factor definitions  
-- **Production Architecture**: Checkpoint callbacks, rolling validation, no-lookahead enforcement  
-- **Multi-Factor Backtesting**: Long–short quantile portfolios with cost & drawdown analysis  
+- `report.md` — readable policy comparison.
+- `policy_results.csv` — policy metrics.
+- `benchmark.csv` — factor-by-test evaluations.
+- Additional CSVs and a manifest record training splits and decisions.
 
----
+Adjust experiment size, walk-forward windows, and budget in [`configs/demo.json`](configs/demo.json).
 
-## Core Workflow (Pseudo code)
+## How it works
 
-```python
-# Stage 1: Factor Computation & Evaluation
-for f in factors:
-    ic = corr(f, forward_returns)
-    icir = rolling_ic(f).mean() / rolling_ic(f).std()
-    turnover = f.diff().abs().mean()
+1. Generate symbolic price and volume factors.
+2. Evaluate candidates across search, falsification, and future windows.
+3. Train test-selection models on earlier benchmark episodes.
+4. Compare policies on held-out episodes under the same budget.
 
-# Stage 2: Regime Detection
-regime = detect_regime(returns_60d)   # low_vol / normal / high_vol / crisis
+## Code map
 
-# Stage 3: RL Weight Optimization
-state  = encode_state(ic_bins, icir_bins, regime, exposure, concentration)
-action = rl_agent.select_action(state)
-reward = compute_reward(alpha_corr, volatility, turnover_cost, regime_risk)
-rl_agent.update(state, action, reward)
+| File | Responsibility |
+| --- | --- |
+| `adaptive_alpha/data_handling.py` | Price panels, CSV loading, synthetic data |
+| `adaptive_alpha/factor_generation.py` | Symbolic expressions and candidate generation |
+| `adaptive_alpha/testing_evaluation.py` | Robustness tests and factor metrics |
+| `adaptive_alpha/experiment_logic.py` | Walk-forward evaluation and budget policies |
+| `adaptive_alpha/results_config.py` | Configuration and reports |
+| `adaptive_alpha/cli.py` | Command-line interface |
+| `tests/` | Unit tests and an end-to-end pipeline check |
 
-# Stage 4: LLM Weight Enhancement
-proposal   = ollama.optimize_weights(base_weights, regime, ic_values)
-weights_ll = parse_json_safe(proposal, fallback=rule_based_fallback)
+## Your own data
 
-# Stage 5: Portfolio Construction
-portfolio_signal = sum(weight[i] * factor[i] for i in factors)
-metrics = evaluate(portfolio_signal, returns)  # Sharpe, MaxDD, IC
+Keep proprietary data outside the repository. Supply a local CSV with these required columns:
 
-# Stage 6: Checkpointing & Decay Monitoring
-if metrics["reward"] > best:
-    save_checkpoint(weights_ll, metrics, regime)
-
-for f in factors:
-    if detect_decay(f):
-        alert_decay(f)
+```text
+date,asset,open,high,low,close,volume
 ```
 
----
+Optional columns: `shares_outstanding`, `industry`, `exchange`, `share_code`.
 
-## Kaggle Application Results
-
-![Applied_result](images/result.png)
-
-**Performance Analysis:**
-
-The framework was applied to an 8-factor daily S&P 500 dataset (Hull Tactical style). Four strategies were benchmarked: Buy-and-Hold, Hybrid (IC-weighted), RLFactors, and LightGBM.
-
-**Key Findings**
-
-- **Small but real alpha**: Hybrid & RLFactors both reached **IC = +0.0129**, statistically significant.
-- **RL+LLM improves over naive ML**: Net Sharpe **0.536 vs 0.459** (+16.6%).
-- **High turnover erodes alpha**: ~27–34% cost drag reduces active performance sharply.
-- **Hybrid & RLFactors converge**: identical IC and Sharpe → stable, non-overfit signal extraction.
-- **Passive still dominates**: Buy-and-Hold Sharpe **0.8843** > all active models.
-
-**Interpretation**
-
-The framework reveals **low-signal market behavior consistent with EMH**.
-Both Hybrid and RLFactors uncover a genuine but very weak alpha (IC = +0.0129, t-stat = 4.68), yet the signal is too small relative to  
-turnover-induced cost drag (~27–34%).  
-
-As a result, net Sharpe ratios fall below passive Buy-and-Hold, illustrating
-the EMH prediction that in highly efficient markets, weak predictive edges  
-cannot overcome realistic trading frictions.
-
----
-
-## Future Work
-
-1. **Multi-Timeframe Factor Fusion** – combine factors across lookback windows (5/10/20/60 days) for robust cross-horizon signals; dynamic weighting based on IC stability per regime.  
-2. **Cross-Asset Class Extensionn** – expand from S&P 500 to cryptocurrencies, commodities, and fixed income; unified IC/regime framework across asset classes.  
-3. **Proactive Factor Decay Warning System** – predict alpha decay before it occurs using IC trend momentum; automatic factor replacement triggers.
-4. **Composite Regime Classification** – enhance 4-state regime detector with correlation/momentum/liquidity signals; regime-specific factor pool selection.  
-5. **Production Real-Time Signal Pipeline** – implement incremental updates and streaming inference for daily live signal generation; checkpoint-based model rollback.
-
----
-
-## Requirements
-
+```bash
+python -m adaptive_alpha.cli build-benchmark \
+  --config configs/demo.json \
+  --prices /absolute/path/to/private/prices.csv \
+  --output artifacts/local
 ```
-Python 3.8+
-NumPy >= 1.19.0
-Pandas >= 1.1.0
-Scikit-learn >= 0.24.0
-SciPy >= 1.5.0
-PyTorch >= 1.7.0
-Matplotlib >= 3.3.0
-Optional: Ollama >= 0.1.0 (for LLM)
+
+Adapt the config's date bounds and window lengths to your dataset. Private data, credentials, and historical experiment outputs are not included. Data files and generated outputs are ignored by Git; review any new file formats before publishing. Results derived from private data should also remain private.
+
+For real-market research, point-in-time metadata, universe membership, delisting returns, and leakage controls require additional validation.
+
+## Tests
+
+```bash
+python -m unittest discover -s tests -v
 ```

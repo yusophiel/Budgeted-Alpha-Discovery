@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "budgeted-adaptive-falsification"
+version = "0.1.0"
+description = "Budget-aware adaptive falsification framework for symbolic equity alpha discovery."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+yaml = ["pyyaml>=6.0"]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+adaptive-alpha = "adaptive_alpha.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["adaptive_alpha*"]
+

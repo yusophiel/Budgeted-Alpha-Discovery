@@ -1,0 +1,41 @@
+{
+  "seed": 5,
+  "data": {
+    "mode": "synthetic",
+    "n_assets": 28,
+    "n_days": 230,
+    "start": "2019-01-01"
+  },
+  "factors": {
+    "n_candidates": 5,
+    "max_depth": 4,
+    "max_window": 20
+  },
+  "labels": {
+    "horizon": 5,
+    "execution_delay": 1,
+    "future_min_rank_ic": 0.004,
+    "future_min_t_stat": 0.2
+  },
+  "episodes": {
+    "search_days": 60,
+    "falsification_days": 40,
+    "future_days": 30,
+    "step_days": 80,
+    "sealed_episodes": 1
+  },
+  "falsification": {
+    "placebo_repetitions": 2,
+    "synthetic_repetitions": 2
+  },
+  "budget": {
+    "total": 80.0,
+    "reject_threshold": 0.72,
+    "survive_threshold": 0.28,
+    "minimum_tests": 2
+  },
+  "policy": {
+    "gamma": 0.8,
+    "eta": 0.15
+  }
+}
